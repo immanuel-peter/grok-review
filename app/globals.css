@@ -1,26 +1,171 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas-0: #050506;
+  --canvas-1: #0a0b0d;
+  --canvas-2: #111316;
+  --surface: #0d0f12;
+  --surface-hover: #13161a;
+  --line: #1e2028;
+  --line-strong: #2a2d37;
+  --ink: #e8eaed;
+  --ink-muted: #8b8f98;
+  --ink-faint: #5f636c;
+  --accent: #e8eaed;
+  --danger: #f85149;
+  --ok: #3fb950;
+  --warn: #d29922;
+  --diff-add-bg: rgba(46, 160, 67, 0.08);
+  --diff-add-border: rgba(46, 160, 67, 0.25);
+  --diff-del-bg: rgba(248, 81, 73, 0.08);
+  --diff-del-border: rgba(248, 81, 73, 0.25);
+  --font-sans:
+    "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:
+    "JetBrains Mono", "SF Mono", "Cascadia Code", "Menlo", monospace;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-faint: var(--ink-faint);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background: var(--canvas-0);
+  font-family: var(--font-sans);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── Review markdown ── */
+
+.review-markdown {
+  color: var(--ink-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.review-markdown > :first-child {
+  margin-top: 0;
+}
+
+.review-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.review-markdown h1,
+.review-markdown h2,
+.review-markdown h3,
+.review-markdown h4 {
+  margin: 1.2em 0 0.4em;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.review-markdown h1 { font-size: 1.3rem; }
+.review-markdown h2 { font-size: 1.1rem; }
+.review-markdown h3 { font-size: 1rem; }
+
+.review-markdown p {
+  margin: 0.6em 0;
+}
+
+.review-markdown a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.review-markdown ul,
+.review-markdown ol {
+  margin: 0.6em 0;
+  padding-left: 1.3rem;
+}
+
+.review-markdown li {
+  margin: 0.3em 0;
+}
+
+.review-markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--canvas-2);
+  border: 1px solid var(--line);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  color: var(--ink);
+}
+
+.review-markdown pre {
+  margin: 0.8em 0;
+  background: var(--canvas-0);
+  border: 1px solid var(--line);
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.review-markdown pre code {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.review-markdown blockquote {
+  margin: 0.8em 0;
+  border-left: 2px solid var(--line-strong);
+  padding: 0.2em 0 0.2em 0.8em;
+  color: var(--ink-muted);
+}
+
+.review-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 1em 0;
+}
+
+/* ── Diff rendering ── */
+
+.diff-line {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+  white-space: pre;
+  padding: 0 12px;
+}
+
+.diff-line-add {
+  background: var(--diff-add-bg);
+  color: var(--ok);
+}
+
+.diff-line-del {
+  background: var(--diff-del-bg);
+  color: var(--danger);
+}
+
+.diff-line-hunk {
+  color: var(--ink-faint);
+  background: rgba(88, 166, 255, 0.06);
+  font-style: italic;
+}
+
+.diff-line-context {
+  color: var(--ink-muted);
 }

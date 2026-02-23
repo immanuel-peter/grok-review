@@ -9,9 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.99",
+    "@vercel/analytics": "^1.6.1",
+    "ai": "^6.0.97",
     "next": "16.1.6",
+    "postgres": "^3.4.8",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
