@@ -1,3 +1,5 @@
+import postgres from "postgres";
+
 type CacheRow = {
   cache_key: string;
   owner: string;
@@ -32,12 +34,7 @@ export type CachedReviewInput = {
   reviewMarkdown: string;
 };
 
-type SqlClient = {
-  <T = unknown>(
-    strings: TemplateStringsArray,
-    ...values: unknown[]
-  ): Promise<T[]>;
-};
+type SqlClient = ReturnType<typeof postgres>;
 
 declare global {
   var __grokreqSqlClient: SqlClient | null | undefined;
@@ -64,23 +61,14 @@ function resolveSqlSslOption(databaseUrl: string): "require" | false {
   return "require";
 }
 
-async function loadSqlClient(): Promise<SqlClient | null> {
+function loadSqlClient(): SqlClient | null {
   const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
     return null;
   }
 
   try {
-    const dynamicImport = new Function(
-      "moduleName",
-      "return import(moduleName)",
-    ) as (moduleName: string) => Promise<{
-      default: (url: string, options: Record<string, unknown>) => SqlClient;
-    }>;
-
-    const postgresModule = await dynamicImport("postgres");
-
-    return postgresModule.default(databaseUrl, {
+    return postgres(databaseUrl, {
       prepare: false,
       max: 1,
       idle_timeout: 20,
@@ -88,22 +76,22 @@ async function loadSqlClient(): Promise<SqlClient | null> {
       ssl: resolveSqlSslOption(databaseUrl),
     });
   } catch (error) {
-    console.error("Failed to load postgres driver. Neon cache disabled.", error);
+    console.error("Failed to create postgres client. Review cache disabled.", error);
     return null;
   }
 }
 
-async function getSqlClient(): Promise<SqlClient | null> {
+function getSqlClient(): SqlClient | null {
   if (global.__grokreqSqlClient !== undefined) {
     return global.__grokreqSqlClient;
   }
 
-  global.__grokreqSqlClient = await loadSqlClient();
+  global.__grokreqSqlClient = loadSqlClient();
   return global.__grokreqSqlClient;
 }
 
 async function ensureSchema(): Promise<boolean> {
-  const sql = await getSqlClient();
+  const sql = getSqlClient();
   if (!sql) {
     return false;
   }
@@ -129,7 +117,11 @@ async function ensureSchema(): Promise<boolean> {
         CREATE INDEX IF NOT EXISTS pr_review_cache_lookup_idx
         ON pr_review_cache (owner, repo, pull_number, head_sha, model)
       `;
-    })();
+    })().catch((error) => {
+      // Allow a later request to retry schema setup if this attempt fails.
+      global.__grokreqSchemaReadyPromise = undefined;
+      throw error;
+    });
   }
 
   await global.__grokreqSchemaReadyPromise;
@@ -139,87 +131,96 @@ async function ensureSchema(): Promise<boolean> {
 export async function getCachedReview(
   cacheKey: string,
 ): Promise<CachedReview | null> {
-  const schemaReady = await ensureSchema();
-  if (!schemaReady) {
+  try {
+    const schemaReady = await ensureSchema();
+    if (!schemaReady) {
+      return null;
+    }
+
+    const sql = getSqlClient();
+    if (!sql) {
+      return null;
+    }
+
+    const rows = await sql<CacheRow[]>`
+      SELECT
+        cache_key,
+        owner,
+        repo,
+        pull_number,
+        head_sha,
+        model,
+        prompt_hash,
+        review_markdown,
+        created_at,
+        updated_at
+      FROM pr_review_cache
+      WHERE cache_key = ${cacheKey}
+      LIMIT 1
+    `;
+
+    const row = rows[0];
+    if (!row) {
+      return null;
+    }
+
+    return {
+      cacheKey: row.cache_key,
+      headSha: row.head_sha,
+      model: row.model,
+      promptHash: row.prompt_hash,
+      reviewMarkdown: row.review_markdown,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  } catch (error) {
+    console.error("Failed to read review cache", error);
     return null;
   }
-
-  const sql = await getSqlClient();
-  if (!sql) {
-    return null;
-  }
-
-  const rows = await sql<CacheRow>`
-    SELECT
-      cache_key,
-      owner,
-      repo,
-      pull_number,
-      head_sha,
-      model,
-      prompt_hash,
-      review_markdown,
-      created_at,
-      updated_at
-    FROM pr_review_cache
-    WHERE cache_key = ${cacheKey}
-    LIMIT 1
-  `;
-
-  const row = rows[0];
-  if (!row) {
-    return null;
-  }
-
-  return {
-    cacheKey: row.cache_key,
-    headSha: row.head_sha,
-    model: row.model,
-    promptHash: row.prompt_hash,
-    reviewMarkdown: row.review_markdown,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
 }
 
 export async function upsertCachedReview(input: CachedReviewInput): Promise<void> {
-  const schemaReady = await ensureSchema();
-  if (!schemaReady) {
-    return;
-  }
+  try {
+    const schemaReady = await ensureSchema();
+    if (!schemaReady) {
+      return;
+    }
 
-  const sql = await getSqlClient();
-  if (!sql) {
-    return;
-  }
+    const sql = getSqlClient();
+    if (!sql) {
+      return;
+    }
 
-  await sql`
-    INSERT INTO pr_review_cache (
-      cache_key,
-      owner,
-      repo,
-      pull_number,
-      head_sha,
-      model,
-      prompt_hash,
-      review_markdown
-    )
-    VALUES (
-      ${input.cacheKey},
-      ${input.owner},
-      ${input.repo},
-      ${input.pullNumber},
-      ${input.headSha},
-      ${input.model},
-      ${input.promptHash},
-      ${input.reviewMarkdown}
-    )
-    ON CONFLICT (cache_key) DO UPDATE
-    SET
-      prompt_hash = EXCLUDED.prompt_hash,
-      review_markdown = EXCLUDED.review_markdown,
-      updated_at = NOW()
-  `;
+    await sql`
+      INSERT INTO pr_review_cache (
+        cache_key,
+        owner,
+        repo,
+        pull_number,
+        head_sha,
+        model,
+        prompt_hash,
+        review_markdown
+      )
+      VALUES (
+        ${input.cacheKey},
+        ${input.owner},
+        ${input.repo},
+        ${input.pullNumber},
+        ${input.headSha},
+        ${input.model},
+        ${input.promptHash},
+        ${input.reviewMarkdown}
+      )
+      ON CONFLICT (cache_key) DO UPDATE
+      SET
+        prompt_hash = EXCLUDED.prompt_hash,
+        review_markdown = EXCLUDED.review_markdown,
+        updated_at = NOW()
+    `;
+  } catch (error) {
+    console.error("Failed to write review cache", error);
+  }
 }
 
 export function isReviewCacheEnabled(): boolean {

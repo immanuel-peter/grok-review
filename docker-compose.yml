@@ -28,8 +28,8 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/grokreview?sslmode=disable
-      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY:-}
-      GROK_MODEL: ${GROK_MODEL:-xai/grok-4-1-fast-reasoning}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      GROK_MODEL: ${GROK_MODEL:-grok-4.5}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     ports:
       - "3000:3000"

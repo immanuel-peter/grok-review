@@ -1,0 +1,35 @@
+version: "1.0"
+name: grok-review
+description: Review PRs with Grok!
+
+services:
+  web:
+    type: nextjs
+    public: true
+    build:
+      source: .
+      dockerfile: Dockerfile
+    domains:
+      - grokreq.com
+      - www.grokreq.com
+    env:
+      DATABASE_URL: ${database.url}
+      XAI_API_KEY: ${secret:XAI_API_KEY}
+      GITHUB_TOKEN: ""
+      GROK_MODEL: grok-4.5
+    depends_on:
+      - database
+    resources:
+      preset: small
+    health:
+      http: /
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  database:
+    type: postgres
+    resources:
+      preset: small
+    retention: permanent
+    backups: daily
