@@ -13,8 +13,11 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@hostess/nextjs": "^0.1.1",
+    "@hostess/nextjs": "^0.2.0",
+    "@octokit/app": "^16.1.0",
+    "@octokit/webhooks": "^14.1.5",
     "next": "16.1.6",
+    "octokit": "^5.0.5",
     "openai": "^6.45.0",
     "postgres": "^3.4.8",
     "react": "19.2.3",

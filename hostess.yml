@@ -17,6 +17,9 @@ services:
       XAI_API_KEY: ${secret:XAI_API_KEY}
       GITHUB_TOKEN: ""
       GROK_MODEL: grok-4.5
+      GITHUB_APP_ID: ${secret:GITHUB_APP_ID}
+      GITHUB_APP_PRIVATE_KEY: ${secret:GITHUB_APP_PRIVATE_KEY}
+      GITHUB_WEBHOOK_SECRET: ${secret:GITHUB_WEBHOOK_SECRET}
     depends_on:
       - database
     resources:
