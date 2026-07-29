@@ -48,6 +48,7 @@ export function getGithubApp(): App {
     appId,
     privateKey: normalizePrivateKey(rawPrivateKey),
     webhooks: { secret: webhookSecret },
+    Octokit,
   });
   return cachedApp;
 }
@@ -56,6 +57,7 @@ export async function getInstallationOctokit(
   installationId: number,
 ): Promise<Octokit> {
   const app = getGithubApp();
+  // The App's Octokit now has rest.pulls and paginate because we passed Octokit from "octokit"
   return (await app.getInstallationOctokit(installationId)) as unknown as Octokit;
 }
 
