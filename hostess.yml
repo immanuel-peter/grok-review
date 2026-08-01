@@ -29,6 +29,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    replicas:
+      min: 0
+      max: 1
 
   database:
     type: postgres
