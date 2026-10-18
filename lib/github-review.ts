@@ -4,9 +4,9 @@ import {
   buildValidLinesMap,
   type ValidLineMap,
 } from "@/lib/github-app";
+import { runReviewAgent } from "@/lib/review-agent";
 import {
   filterValidFileComments,
-  generateStructuredReview,
   getReviewEventFromVerdict,
   type StructuredReview,
 } from "@/lib/structured-review";
@@ -19,6 +19,7 @@ export type PostReviewArgs = {
   pullNumber: number;
   headSha: string;
   files: GitHubPullRequestFile[];
+  githubToken: string;
   structuredReview?: StructuredReview; // if already generated
 };
 
@@ -42,7 +43,7 @@ export async function generateAndPostReview(
       draft: boolean;
       user: { login: string };
       head: { sha: string; ref: string };
-      base: { ref: string };
+      base: { ref: string; sha: string };
       additions: number;
       deletions: number;
       changed_files: number;
@@ -56,16 +57,19 @@ export async function generateAndPostReview(
     pullNumber,
     headSha,
     files,
+    githubToken,
     pullRequest,
   } = args;
 
   let review = args.structuredReview;
   if (!review) {
-    review = await generateStructuredReview({
+    review = await runReviewAgent({
       owner,
       repo,
       pullRequest,
       files,
+      githubToken,
+      log: (message) => console.log(`[agent ${owner}/${repo}#${pullNumber}] ${message}`),
     });
   }
 

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS pr_review_cache (
   model          TEXT        NOT NULL,
   prompt_hash    TEXT        NOT NULL,
   review_markdown TEXT       NOT NULL,
+  review_json    JSONB,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

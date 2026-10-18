@@ -9,6 +9,7 @@ type CacheRow = {
   model: string;
   prompt_hash: string;
   review_markdown: string;
+  review_json: unknown;
   created_at: Date;
   updated_at: Date;
 };
@@ -19,6 +20,7 @@ export type CachedReview = {
   model: string;
   promptHash: string;
   reviewMarkdown: string;
+  reviewJson: unknown;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -32,6 +34,7 @@ export type CachedReviewInput = {
   model: string;
   promptHash: string;
   reviewMarkdown: string;
+  reviewJson: unknown;
 };
 
 type SqlClient = ReturnType<typeof postgres>;
@@ -108,9 +111,14 @@ async function ensureSchema(): Promise<boolean> {
           model TEXT NOT NULL,
           prompt_hash TEXT NOT NULL,
           review_markdown TEXT NOT NULL,
+          review_json JSONB,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
+      `;
+
+      await sql`
+        ALTER TABLE pr_review_cache ADD COLUMN IF NOT EXISTS review_json JSONB
       `;
 
       await sql`
@@ -152,6 +160,7 @@ export async function getCachedReview(
         model,
         prompt_hash,
         review_markdown,
+        review_json,
         created_at,
         updated_at
       FROM pr_review_cache
@@ -170,6 +179,7 @@ export async function getCachedReview(
       model: row.model,
       promptHash: row.prompt_hash,
       reviewMarkdown: row.review_markdown,
+      reviewJson: row.review_json,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -200,7 +210,8 @@ export async function upsertCachedReview(input: CachedReviewInput): Promise<void
         head_sha,
         model,
         prompt_hash,
-        review_markdown
+        review_markdown,
+        review_json
       )
       VALUES (
         ${input.cacheKey},
@@ -210,12 +221,14 @@ export async function upsertCachedReview(input: CachedReviewInput): Promise<void
         ${input.headSha},
         ${input.model},
         ${input.promptHash},
-        ${input.reviewMarkdown}
+        ${input.reviewMarkdown},
+        ${sql.json(input.reviewJson as Parameters<typeof sql.json>[0])}
       )
       ON CONFLICT (cache_key) DO UPDATE
       SET
         prompt_hash = EXCLUDED.prompt_hash,
         review_markdown = EXCLUDED.review_markdown,
+        review_json = EXCLUDED.review_json,
         updated_at = NOW()
     `;
   } catch (error) {

@@ -24,7 +24,10 @@ Create `.env.local` from `.env.example` and set:
 - `XAI_API_KEY` — xAI API key
 - `DATABASE_URL` — Postgres (optional; cache disabled if unset)
 - `GITHUB_TOKEN` — optional but recommended for rate limits
-- `GROK_MODEL` — optional; defaults to `grok-4.5`
+- `GROK_MODEL` — optional (default: `grok-4.5`)
+- `GROK_REASONING_EFFORT` — optional; `low` (default), `medium`, or `high`
+- `SANDBOX_URL` - review sandbox service
+- `SANDBOX_TOKEN` — review sandbox service
 
 ## Run locally
 
@@ -34,6 +37,27 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000), paste a GitHub PR URL, and start reviewing.
+
+### Review agent
+
+Reviews use a Grok harness with `shell` sandbox tools and a `submit_review` tool.
+The sandbox clones the PR with the merge base.
+
+Dry-run a review against any PR without posting to GitHub:
+
+```bash
+docker compose up sandbox -d --build
+GITHUB_TOKEN=$(gh auth token) pnpm review:local https://github.com/<owner>/<repo>/pull/<n>
+```
+
+Shell commands stream to stderr; the final review JSON prints to stdout.
+
+Full stack (app + sandbox + Postgres), with `XAI_API_KEY` exported in your shell:
+
+```bash
+docker compose up -d --build
+open http://localhost:3000/vercel/ms/pull/250
+```
 
 Local Postgres via Compose:
 
@@ -48,6 +72,7 @@ docker compose up postgres -d
 hostess login
 hostess secrets add XAI_API_KEY --value "$XAI_API_KEY"
 hostess secrets add GITHUB_TOKEN --value "$GITHUB_TOKEN"   # optional
+hostess secrets add SANDBOX_TOKEN --value "$(openssl rand -hex 32)"
 hostess validate
 hostess deploy --env production
 ```

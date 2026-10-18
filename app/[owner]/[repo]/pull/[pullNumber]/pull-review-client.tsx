@@ -4,6 +4,12 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { useCallback, useEffect, useState } from "react";
 
+import type {
+  ReviewStreamEvent,
+  StructuredFileComment,
+  StructuredReview,
+} from "@/lib/structured-review";
+
 type FileData = {
   filename: string;
   status: string;
@@ -30,11 +36,6 @@ type PullReviewClientProps = {
     changedFiles: number;
   };
   files: FileData[];
-};
-
-type FileComment = {
-  filename: string;
-  content: string;
 };
 
 function statusBadge(status: string) {
@@ -70,61 +71,6 @@ function DiffView({ patch }: { patch: string }) {
   );
 }
 
-function parseFileComments(
-  review: string,
-  files: FileData[],
-): { summary: string; fileComments: FileComment[] } {
-  const filenames = files.map((f) => f.filename);
-  const fileComments: FileComment[] = [];
-
-  const fileScopedMatch = review.match(
-    /## File-Scoped Comments\n([\s\S]*?)(?=\n## |\n*$)/,
-  );
-
-  if (!fileScopedMatch) {
-    return { summary: review, fileComments: [] };
-  }
-
-  const fileScopedContent = fileScopedMatch[1];
-  const summary = review.replace(
-    /## File-Scoped Comments\n[\s\S]*?(?=\n## |\n*$)/,
-    "",
-  ).trim();
-
-  for (const filename of filenames) {
-    const lines = fileScopedContent.split("\n");
-    let capturing = false;
-    let buffer: string[] = [];
-
-    for (const line of lines) {
-      if (line.includes(filename)) {
-        if (capturing && buffer.length > 0) {
-          break;
-        }
-        capturing = true;
-        buffer.push(line);
-      } else if (capturing) {
-        const isNewFile = filenames.some(
-          (f) => f !== filename && line.includes(f),
-        );
-        if (isNewFile) {
-          break;
-        }
-        buffer.push(line);
-      }
-    }
-
-    if (buffer.length > 0) {
-      fileComments.push({
-        filename,
-        content: buffer.join("\n").trim(),
-      });
-    }
-  }
-
-  return { summary, fileComments };
-}
-
 function basename(path: string) {
   return path.split("/").pop() ?? path;
 }
@@ -141,7 +87,8 @@ export function PullReviewClient({
   pullRequest,
   files,
 }: PullReviewClientProps) {
-  const [review, setReview] = useState("");
+  const [review, setReview] = useState<StructuredReview | null>(null);
+  const [logs, setLogs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
@@ -162,7 +109,8 @@ export function PullReviewClient({
   const runReview = useCallback(
     async (forceRefresh = false) => {
       setError(null);
-      setReview("");
+      setReview(null);
+      setLogs([]);
       setIsLoading(true);
 
       try {
@@ -185,13 +133,25 @@ export function PullReviewClient({
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let buffered = "";
+
+        const handleLine = (line: string) => {
+          if (!line.trim()) return;
+          const event = JSON.parse(line) as ReviewStreamEvent;
+          if (event.type === "log") setLogs((cur) => [...cur, event.message]);
+          else if (event.type === "review") setReview(event.review);
+          else throw new Error(event.message);
+        };
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          setReview((cur) => cur + decoder.decode(value, { stream: true }));
+          buffered += decoder.decode(value, { stream: true });
+          const lines = buffered.split("\n");
+          buffered = lines.pop() ?? "";
+          lines.forEach(handleLine);
         }
-        setReview((cur) => cur + decoder.decode());
+        handleLine(buffered + decoder.decode());
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Review request failed.",
@@ -207,13 +167,16 @@ export function PullReviewClient({
     void runReview(false);
   }, [runReview]);
 
-  const { summary, fileComments } = review
-    ? parseFileComments(review, files)
-    : { summary: "", fileComments: [] };
+  const summary = review
+    ? `**Verdict:** ${review.verdict}\n\n${review.overall_review}`
+    : "";
 
-  const commentsByFile = new Map<string, string>();
-  for (const fc of fileComments) {
-    commentsByFile.set(fc.filename, fc.content);
+  const commentsByFile = new Map<string, StructuredFileComment[]>();
+  for (const comment of review?.file_comments ?? []) {
+    commentsByFile.set(comment.path, [
+      ...(commentsByFile.get(comment.path) ?? []),
+      comment,
+    ]);
   }
 
   return (
@@ -297,10 +260,17 @@ export function PullReviewClient({
         )}
 
         {isLoading && !review && (
-          <p className="mt-6 text-sm text-muted">
-            Streaming review
-            <span className="animate-pulse">...</span>
-          </p>
+          <div className="mt-6">
+            <p className="text-sm text-muted">
+              Grok is exploring the repo
+              <span className="animate-pulse">...</span>
+            </p>
+            {logs.length > 0 && (
+              <pre className="mt-3 max-h-64 overflow-y-auto rounded-md border border-[--line] bg-[--canvas-2] px-3 py-2 font-mono text-[11px] text-muted">
+                {logs.slice(-40).join("\n")}
+              </pre>
+            )}
+          </div>
         )}
 
         {summary && (
@@ -344,7 +314,7 @@ export function PullReviewClient({
           <div className="mt-3 space-y-2">
             {files.map((file) => {
               const isExpanded = expandedFiles.has(file.filename);
-              const comment = commentsByFile.get(file.filename);
+              const comments = commentsByFile.get(file.filename);
 
               return (
                 <div
@@ -372,8 +342,8 @@ export function PullReviewClient({
                       <span className="font-mono text-[11px] text-danger">
                         -{file.deletions}
                       </span>
-                      {comment && (
-                        <span className="h-2 w-2 rounded-full bg-ink" title="Has review comment" />
+                      {comments && (
+                        <span className="h-2 w-2 rounded-full bg-ink" title="Has review comments" />
                       )}
                     </span>
                   </button>
@@ -389,16 +359,19 @@ export function PullReviewClient({
                         </div>
                       )}
 
-                      {comment && (
-                        <div className="border-t border-[--line] bg-[--canvas-2] px-4 py-3">
+                      {comments?.map((comment) => (
+                        <div
+                          key={`${comment.line}:${comment.body.slice(0, 40)}`}
+                          className="border-t border-[--line] bg-[--canvas-2] px-4 py-3"
+                        >
                           <div className="mb-1 text-[11px] font-medium text-muted">
-                            Review comment
+                            Line {comment.line} · {comment.severity}
                           </div>
                           <div className="review-markdown text-sm">
-                            <ReactMarkdown>{comment}</ReactMarkdown>
+                            <ReactMarkdown>{comment.body}</ReactMarkdown>
                           </div>
                         </div>
-                      )}
+                      ))}
                     </>
                   )}
                 </div>

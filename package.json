@@ -10,15 +10,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "review:local": "tsx --env-file-if-exists=.env.local scripts/review-pr.mts"
   },
   "dependencies": {
     "@hostess/nextjs": "^0.2.0",
     "@octokit/app": "^16.1.0",
     "@octokit/webhooks": "^14.1.5",
+    "@xai-official/sdk": "0.2.4",
     "next": "16.1.6",
     "octokit": "^5.0.5",
-    "openai": "^6.45.0",
     "postgres": "^3.4.8",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -33,6 +34,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "4.23.15",
     "typescript": "^5"
-  }
+  },
+  "type": "module"
 }

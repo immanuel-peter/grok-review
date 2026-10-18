@@ -109,7 +109,7 @@ export async function fetchPullRequestWithFilesViaOctokit(
     draft: pr.draft ?? false,
     user: { login: pr.user?.login ?? "unknown" },
     head: { sha: pr.head.sha, ref: pr.head.ref },
-    base: { ref: pr.base.ref },
+    base: { ref: pr.base.ref, sha: pr.base.sha },
     additions: pr.additions ?? 0,
     deletions: pr.deletions ?? 0,
     changed_files: pr.changed_files ?? 0,

@@ -17,11 +17,15 @@ services:
       XAI_API_KEY: ${secret:XAI_API_KEY}
       GITHUB_TOKEN: ""
       GROK_MODEL: grok-4.5
+      GROK_REASONING_EFFORT: low
       GITHUB_APP_ID: ${secret:GITHUB_APP_ID}
       GITHUB_APP_PRIVATE_KEY: ${secret:GITHUB_APP_PRIVATE_KEY}
       GITHUB_WEBHOOK_SECRET: ${secret:GITHUB_WEBHOOK_SECRET}
+      SANDBOX_URL: ${sandbox.url}
+      SANDBOX_TOKEN: ${secret:SANDBOX_TOKEN}
     depends_on:
       - database
+      - sandbox
     resources:
       preset: small
     health:
@@ -32,6 +36,21 @@ services:
     replicas:
       min: 0
       max: 1
+
+  sandbox:
+    type: custom
+    build:
+      source: ./sandbox
+    ports: [8080]
+    env:
+      SANDBOX_TOKEN: ${secret:SANDBOX_TOKEN}
+    resources:
+      preset: small
+    health:
+      http: /healthz
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   database:
     type: postgres
