@@ -14,8 +14,7 @@ const { owner, repo, pullNumber } = parsed;
 const { pullRequest, files } = await fetchPullRequestWithFiles(owner, repo, pullNumber);
 console.error(`Reviewing ${owner}/${repo}#${pullNumber}: ${pullRequest.title} (${files.length} files)`);
 
-const startedAt = Date.now();
-const review = await runReviewAgent({
+const { review, stats } = await runReviewAgent({
   owner,
   repo,
   pullRequest,
@@ -31,6 +30,6 @@ const postable = filterValidFileComments(
 );
 
 console.error(
-  `Done in ${Math.round((Date.now() - startedAt) / 1000)}s: verdict=${review.verdict}, ${postable.length}/${review.file_comments.length} comments postable`,
+  `Done in ${Math.round(stats.durationMs / 1000)}s (${stats.tokens} tokens): verdict=${review.verdict}, ${postable.length}/${review.file_comments.length} comments postable`,
 );
 console.log(JSON.stringify({ ...review, file_comments: postable }, null, 2));

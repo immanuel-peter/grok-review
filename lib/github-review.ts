@@ -63,14 +63,14 @@ export async function generateAndPostReview(
 
   let review = args.structuredReview;
   if (!review) {
-    review = await runReviewAgent({
+    ({ review } = await runReviewAgent({
       owner,
       repo,
       pullRequest,
       files,
       githubToken,
       log: (message) => console.log(`[agent ${owner}/${repo}#${pullNumber}] ${message}`),
-    });
+    }));
   }
 
   const validLinesMap: ValidLineMap = buildValidLinesMap(files);

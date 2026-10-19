@@ -10,6 +10,7 @@ type CacheRow = {
   prompt_hash: string;
   review_markdown: string;
   review_json: unknown;
+  review_stats: unknown;
   created_at: Date;
   updated_at: Date;
 };
@@ -21,6 +22,7 @@ export type CachedReview = {
   promptHash: string;
   reviewMarkdown: string;
   reviewJson: unknown;
+  reviewStats: unknown;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -35,6 +37,7 @@ export type CachedReviewInput = {
   promptHash: string;
   reviewMarkdown: string;
   reviewJson: unknown;
+  reviewStats: unknown;
 };
 
 type SqlClient = ReturnType<typeof postgres>;
@@ -122,6 +125,10 @@ async function ensureSchema(): Promise<boolean> {
       `;
 
       await sql`
+        ALTER TABLE pr_review_cache ADD COLUMN IF NOT EXISTS review_stats JSONB
+      `;
+
+      await sql`
         CREATE INDEX IF NOT EXISTS pr_review_cache_lookup_idx
         ON pr_review_cache (owner, repo, pull_number, head_sha, model)
       `;
@@ -161,6 +168,7 @@ export async function getCachedReview(
         prompt_hash,
         review_markdown,
         review_json,
+        review_stats,
         created_at,
         updated_at
       FROM pr_review_cache
@@ -180,6 +188,7 @@ export async function getCachedReview(
       promptHash: row.prompt_hash,
       reviewMarkdown: row.review_markdown,
       reviewJson: row.review_json,
+      reviewStats: row.review_stats,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -211,7 +220,8 @@ export async function upsertCachedReview(input: CachedReviewInput): Promise<void
         model,
         prompt_hash,
         review_markdown,
-        review_json
+        review_json,
+        review_stats
       )
       VALUES (
         ${input.cacheKey},
@@ -222,13 +232,15 @@ export async function upsertCachedReview(input: CachedReviewInput): Promise<void
         ${input.model},
         ${input.promptHash},
         ${input.reviewMarkdown},
-        ${sql.json(input.reviewJson as Parameters<typeof sql.json>[0])}
+        ${sql.json(input.reviewJson as Parameters<typeof sql.json>[0])},
+        ${sql.json(input.reviewStats as Parameters<typeof sql.json>[0])}
       )
       ON CONFLICT (cache_key) DO UPDATE
       SET
         prompt_hash = EXCLUDED.prompt_hash,
         review_markdown = EXCLUDED.review_markdown,
         review_json = EXCLUDED.review_json,
+        review_stats = EXCLUDED.review_stats,
         updated_at = NOW()
     `;
   } catch (error) {

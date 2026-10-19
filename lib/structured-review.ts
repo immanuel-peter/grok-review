@@ -102,7 +102,15 @@ export function renderReviewMarkdown(review: StructuredReview): string {
   return sections.join("\n\n");
 }
 
+export type ReviewStats = { tokens: number; durationMs: number };
+
 export type ReviewStreamEvent =
   | { type: "log"; message: string }
-  | { type: "review"; review: StructuredReview; cached: boolean }
+  | {
+      type: "review";
+      review: StructuredReview;
+      cached: boolean;
+      stats: ReviewStats | null;
+      reviewedAt: string;
+    }
   | { type: "error"; message: string };

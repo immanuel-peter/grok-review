@@ -13,6 +13,7 @@ import { buildReviewCacheKey, computePromptHash } from "@/lib/review-context";
 import {
   renderReviewMarkdown,
   StructuredReviewSchema,
+  type ReviewStats,
   type ReviewStreamEvent,
 } from "@/lib/structured-review";
 
@@ -118,6 +119,8 @@ export async function POST(request: Request): Promise<Response> {
         type: "review",
         review: cachedReview.data,
         cached: true,
+        stats: (cached?.reviewStats as ReviewStats | null) ?? null,
+        reviewedAt: (cached?.updatedAt ?? new Date()).toISOString(),
       };
       return new Response(`${JSON.stringify(event)}\n`, {
         headers: { ...headers, "X-Grokreq-Cache": "HIT" },
@@ -137,7 +140,7 @@ export async function POST(request: Request): Promise<Response> {
       };
 
       try {
-        const review = await runReviewAgent({
+        const { review, stats } = await runReviewAgent({
           owner: validated.owner,
           repo: validated.repo,
           pullRequest: pullData.pullRequest,
@@ -146,7 +149,13 @@ export async function POST(request: Request): Promise<Response> {
           log: (message) => send({ type: "log", message }),
           signal: request.signal,
         });
-        send({ type: "review", review, cached: false });
+        send({
+          type: "review",
+          review,
+          cached: false,
+          stats,
+          reviewedAt: new Date().toISOString(),
+        });
 
         if (isReviewCacheEnabled()) {
           await upsertCachedReview({
@@ -166,6 +175,7 @@ export async function POST(request: Request): Promise<Response> {
             ),
             reviewMarkdown: renderReviewMarkdown(review),
             reviewJson: review,
+            reviewStats: stats,
           });
         }
       } catch (error) {

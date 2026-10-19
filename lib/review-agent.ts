@@ -13,6 +13,7 @@ import type { GitHubPullRequest, GitHubPullRequestFile } from "@/lib/github";
 import { createSandboxWorkspace, type SandboxWorkspace } from "@/lib/sandbox";
 import {
   StructuredReviewSchema,
+  type ReviewStats,
   type StructuredReview,
 } from "@/lib/structured-review";
 
@@ -193,10 +194,13 @@ function checkSubmission(
   return { review: result.data, problems };
 }
 
+export type ReviewAgentResult = { review: StructuredReview; stats: ReviewStats };
+
 export async function runReviewAgent(
   args: ReviewAgentArgs,
-): Promise<StructuredReview> {
+): Promise<ReviewAgentResult> {
   const { owner, repo, pullRequest, files, githubToken } = args;
+  const startedAt = Date.now();
   const log = args.log ?? (() => {});
   const client = getClient();
 
@@ -217,6 +221,7 @@ export async function runReviewAgent(
   const input: InputItem[] = [{ role: "user", content: buildReviewAgentPrompt(args) }];
   const promptCacheKey = `review:${owner}/${repo}#${pullRequest.number}:${workspace.headSha}`;
   let rejections = 0;
+  let tokens = 0;
 
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -231,6 +236,7 @@ export async function runReviewAgent(
         reasoning: { effort: REASONING_EFFORT },
       }, { signal: args.signal });
       log(`turn ${turn + 1}: ${response.usage.input_tokens} in / ${response.usage.output_tokens} out`);
+      tokens += response.usage.input_tokens + response.usage.output_tokens;
 
       input.push(...response.toInput());
 
@@ -264,7 +270,10 @@ export async function runReviewAgent(
         const checked = checkSubmission(call, files);
         if ("review" in checked && (checked.problems.length === 0 || rejections >= MAX_SUBMIT_REJECTIONS || lastTurn)) {
           log(`submitted: verdict=${checked.review.verdict}, ${checked.review.file_comments.length} file comments`);
-          return checked.review;
+          return {
+            review: checked.review,
+            stats: { tokens, durationMs: Date.now() - startedAt },
+          };
         }
 
         rejections++;

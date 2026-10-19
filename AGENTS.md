@@ -20,6 +20,7 @@ The sandbox runs commands written by a model that reads untrusted code. Keep it 
 
 - **Comment lines.** A `submit_review` comment must point at a new-file line inside a diff hunk, or GitHub rejects it. `buildValidLinesMap` is the check; the agent gets two retries before invalid comments are filtered out.
 - **Cache version.** Bump `PROMPT_VERSION` in `lib/review-context.ts` whenever review behavior changes, so stale cached reviews stop being served.
+- **Cache schema.** `pr_review_cache` is defined in both `db.sql` and `ensureSchema` in `lib/review-cache.ts`. Add new columns to both, and use `ADD COLUMN IF NOT EXISTS` in `ensureSchema` so existing databases pick them up.
 - **Stream format.** `/api/review` sends newline-delimited `ReviewStreamEvent` JSON. Change the route and `pull-review-client.tsx` together.
 - **ESM.** The package is `"type": "module"` because `@xai-official/sdk` is ESM-only. Scripts are `.mts`.
 
