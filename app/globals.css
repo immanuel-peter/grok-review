@@ -1,63 +1,101 @@
 @import "tailwindcss";
 
 :root {
-  --canvas-0: #050506;
-  --canvas-1: #0a0b0d;
-  --canvas-2: #111316;
-  --surface: #0d0f12;
-  --surface-hover: #13161a;
-  --line: #1e2028;
-  --line-strong: #2a2d37;
-  --ink: #e8eaed;
-  --ink-muted: #8b8f98;
-  --ink-faint: #5f636c;
-  --accent: #e8eaed;
-  --danger: #f85149;
-  --ok: #3fb950;
-  --warn: #d29922;
-  --diff-add-bg: rgba(46, 160, 67, 0.08);
-  --diff-add-border: rgba(46, 160, 67, 0.25);
-  --diff-del-bg: rgba(248, 81, 73, 0.08);
-  --diff-del-border: rgba(248, 81, 73, 0.25);
-  --font-sans:
-    "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono:
-    "JetBrains Mono", "SF Mono", "Cascadia Code", "Menlo", monospace;
+  --canvas-0: #0a0a0a;
+  --surface: #0f0f0f;
+  --surface-hover: #141414;
+  --raised: #161616;
+  --active: #1c1c1c;
+  --line: #1f1f1f;
+  --line-soft: #1a1a1a;
+  --line-strong: #262626;
+  --ink: #ededed;
+  --ink-body: #c9c9c9;
+  --ink-muted: #a1a1a1;
+  --ink-subtle: #8f8f8f;
+  --ink-faint: #737373;
+  --ink-ghost: #4a4a4a;
+  --danger: #ff7b80;
+  --ok: #5fd18b;
+  --warn: #e2c08d;
+  --sev-critical: #ff6369;
+  --sev-high: #ffa94d;
+  --sev-medium: #e8d27a;
+  --sev-low: #6b6b6b;
+  --git-added: #73c991;
+  --git-modified: #e2c08d;
+  --diff-add-bg: rgba(63, 185, 80, 0.09);
+  --diff-add-ink: #e6f6ec;
+  --diff-del-bg: rgba(248, 81, 73, 0.09);
+  --diff-del-ink: #f8dcdd;
+  --diff-hunk-bg: #0f1116;
 }
 
 @theme inline {
+  --color-canvas: var(--canvas-0);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-raised: var(--raised);
+  --color-active: var(--active);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
+  --color-body: var(--ink-body);
   --color-muted: var(--ink-muted);
+  --color-subtle: var(--ink-subtle);
   --color-faint: var(--ink-faint);
+  --color-ghost: var(--ink-ghost);
   --color-danger: var(--danger);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  --color-sev-critical: var(--sev-critical);
+  --color-sev-high: var(--sev-high);
+  --color-sev-medium: var(--sev-medium);
+  --color-sev-low: var(--sev-low);
+  --color-git-added: var(--git-added);
+  --color-git-modified: var(--git-modified);
+  --font-sans: var(--font-geist), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), "SF Mono", Menlo, monospace;
 }
 
-* {
-  box-sizing: border-box;
-}
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  color: var(--ink);
-  background: var(--canvas-0);
-  font-family: var(--font-sans);
-}
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    background: var(--canvas-0);
+    font-family: var(--font-geist), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
+  summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  details[open] > summary > .chevron {
+    transform: rotate(90deg);
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 /* ── Review markdown ── */
 
 .review-markdown {
-  color: var(--ink-muted);
-  font-size: 14px;
+  color: var(--ink-body);
+  font-size: 15px;
   line-height: 1.7;
 }
 
@@ -98,17 +136,28 @@ a {
   padding-left: 1.3rem;
 }
 
+.review-markdown ul {
+  list-style: disc;
+}
+
+.review-markdown ol {
+  list-style: decimal;
+}
+
+.review-markdown li::marker {
+  color: var(--ink-faint);
+}
+
 .review-markdown li {
   margin: 0.3em 0;
 }
 
 .review-markdown code {
-  font-family: var(--font-mono);
-  font-size: 0.88em;
-  background: var(--canvas-2);
-  border: 1px solid var(--line);
-  padding: 0.1em 0.35em;
-  border-radius: 3px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.87em;
+  background: var(--active);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
   color: var(--ink);
 }
 
@@ -117,7 +166,7 @@ a {
   background: var(--canvas-0);
   border: 1px solid var(--line);
   padding: 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   overflow-x: auto;
 }
 
@@ -140,32 +189,7 @@ a {
   margin: 1em 0;
 }
 
-/* ── Diff rendering ── */
-
-.diff-line {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 20px;
-  white-space: pre;
-  padding: 0 12px;
-}
-
-.diff-line-add {
-  background: var(--diff-add-bg);
-  color: var(--ok);
-}
-
-.diff-line-del {
-  background: var(--diff-del-bg);
-  color: var(--danger);
-}
-
-.diff-line-hunk {
-  color: var(--ink-faint);
-  background: rgba(88, 166, 255, 0.06);
-  font-style: italic;
-}
-
-.diff-line-context {
-  color: var(--ink-muted);
+.review-markdown strong {
+  color: var(--ink);
+  font-weight: 500;
 }

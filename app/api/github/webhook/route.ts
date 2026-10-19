@@ -86,6 +86,10 @@ async function processPullRequestReview(payload: PullRequestWebhookPayload) {
   }
 
   try {
+    const { token: githubToken } = (await octokit.auth({
+      type: "installation",
+    })) as { token: string };
+
     const result = await generateAndPostReview({
       octokit,
       owner,
@@ -93,22 +97,8 @@ async function processPullRequestReview(payload: PullRequestWebhookPayload) {
       pullNumber,
       headSha: prData.pullRequest.head.sha, // use fresh SHA in case payload is stale
       files: prData.files,
-      pullRequest: {
-        ...prData.pullRequest,
-        body: prData.pullRequest.body,
-      } as PullRequestWebhookPayload["pull_request"] & {
-        additions: number;
-        deletions: number;
-        changed_files: number;
-        html_url: string;
-        number: number;
-        title: string;
-        user: { login: string };
-        head: { sha: string; ref: string };
-        base: { ref: string };
-        state: string;
-        draft: boolean;
-      },
+      githubToken,
+      pullRequest: prData.pullRequest,
     });
 
     console.log(

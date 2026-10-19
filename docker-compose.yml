@@ -25,14 +25,45 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      sandbox:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/grokreview?sslmode=disable
       XAI_API_KEY: ${XAI_API_KEY:-}
       GROK_MODEL: ${GROK_MODEL:-grok-4.5}
+      GROK_REASONING_EFFORT: ${GROK_REASONING_EFFORT:-low}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      SANDBOX_URL: http://sandbox:8080
+      SANDBOX_TOKEN: ${SANDBOX_TOKEN:-dev-sandbox-token}
     ports:
       - "3000:3000"
+    restart: unless-stopped
+
+  sandbox:
+    container_name: grokreq-sandbox
+    build:
+      context: ./sandbox
+    environment:
+      SANDBOX_TOKEN: ${SANDBOX_TOKEN:-dev-sandbox-token}
+    ports:
+      - "8080:8080"
+    read_only: true
+    tmpfs:
+      - /work:size=2g
+      - /tmp:size=64m
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE, FOWNER, KILL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    pids_limit: 256
+    cpus: 1
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
 
 volumes:

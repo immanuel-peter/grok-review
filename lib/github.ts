@@ -17,6 +17,7 @@ export type GitHubPullRequest = {
   };
   base: {
     ref: string;
+    sha: string;
   };
   additions: number;
   deletions: number;
